@@ -1,0 +1,215 @@
+package tile;
+
+import java.awt.Graphics2D;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+
+import javax.imageio.ImageIO;
+
+import main.GamePanel;
+
+public class TileManager {
+
+    GamePanel gp;
+    public Tile[] tile;
+    public int[][] mapGrid;
+
+    public TileManager(GamePanel gp) {
+        this.gp = gp;
+
+        tile = new Tile[200];
+        mapGrid = new int[gp.maxWorldCol][gp.maxWorldCol];
+
+        loadTileImages();
+        loadMap("/maps/unimap1.txt");
+    }
+
+    // ============================================================
+    // TILE LOADER
+    // ============================================================
+    private void load(int index, String filename, boolean collidable) {
+        try {
+            tile[index] = new Tile();
+            tile[index].image =
+                    ImageIO.read(getClass().getResourceAsStream("/tiles/" + filename));
+            tile[index].collision = collidable;
+        } catch (Exception e) {
+            System.out.println("Missing tile: " + filename);
+            tile[index] = new Tile(); // keeps game safe
+            tile[index].image = null;
+            tile[index].collision = false;
+        }
+    }
+
+    // ============================================================
+    // LOAD ALL TILE IMAGES (CLEAN + CORRECTED)
+    // ============================================================
+    public void loadTileImages() {
+
+        // BASIC TILESET
+        load(1, "grass2.png", false);
+        load(2, "tree1.png", true);
+        load(3, "tree2.png", true);
+        load(4, "tree3.png", true);
+        load(5, "tree4.png", true);
+        load(6, "tree5.png", true);
+        load(7, "tree6.png", true);
+        load(8, "tree7.png", true);
+        load(9, "tree8.png", true);
+        load(10, "grassflower.png", false);
+        load(11, "stone_2.png", true);
+
+        // COE TILES — FIXED (12 → 36)
+        for (int i = 12; i <= 36; i++) {
+            load(i, "coe" + (i - 11) + ".png", true);
+        }
+
+        // ADMIN TILES (37 → 119) FIXED MATH
+        for (int i = 37; i <= 119; i++) {
+            load(i, "admin" + (i - 35) + ".png", true);
+        }
+
+        // PATH TILES
+        load(120, "path_right.png", false);
+        load(121, "path_left.png", false);
+        load(122, "path.png", false);
+        load(123, "path_top.png", false);
+        load(124, "path_bottom.png", false);
+        load(125, "path_tr.png", false);
+        load(126, "path_rb.png", false);
+        load(127, "path_tl.png", false);
+        load(128, "path_lb.png", false);
+
+        load(129, "darkgrass.png", false);
+        load(130, "darkgrassflower.png", false);
+        load(131, "stone_path.png", false);
+        load(132, "stone_darkgrass.png", true);
+        load(133, "stone.png", false);
+
+        // CABIN TILES (134–142)
+        load(134, "cabin1.png", true);
+        load(135, "cabin2.png", true);
+        load(136, "cabin3.png", true);
+        load(137, "cabin4.png", true);
+        load(138, "cabin5.png", true);
+        load(139, "cabin6.png", true);
+        load(140, "cabin7.png", true);
+        load(141, "cabin8.png", true);
+        load(142, "cabin9.png", true);
+        
+        
+    }
+
+    // ============================================================
+    // MAP LOADER (SAFE)
+    // ============================================================
+    public void loadMap(String filePath) {
+        try {
+            InputStream is = getClass().getResourceAsStream(filePath);
+            BufferedReader br = new BufferedReader(new InputStreamReader(is));
+
+            int row = 0;
+            String line;
+
+            while ((line = br.readLine()) != null && row < gp.maxWorldRow) {
+
+                if (line.trim().isEmpty()) continue;
+
+                String[] tokens = line.split(" ");
+
+                for (int col = 0; col < gp.maxWorldCol; col++) {
+                    if (col < tokens.length) {
+                        try {
+                            mapGrid[row][col] = Integer.parseInt(tokens[col]);
+                        } catch (Exception e) {
+                            mapGrid[row][col] = 0;
+                        }
+                    } else {
+                        mapGrid[row][col] = 0;
+                    }
+                }
+
+                row++;
+            }
+            br.close();
+        } catch (Exception e) {
+            System.out.println("Map load error: " + e);
+        }
+    }
+
+    // ============================================================
+    // DRAW TILES + CAMERA — CLEAN VERSION
+    // ============================================================
+    public void draw(Graphics2D g2) {
+
+        int camX = gp.player.worldX - gp.screenWidth / 2;
+        int camY = gp.player.worldY - gp.screenHeight / 2;
+
+        // Clamp to world
+        if (camX < 0) camX = 0;
+        if (camY < 0) camY = 0;
+
+        if (camX > gp.worldWidth - gp.screenWidth)
+            camX = gp.worldWidth - gp.screenWidth;
+
+        if (camY > gp.worldHeight - gp.screenHeight)
+            camY = gp.worldHeight - gp.screenHeight;
+
+        int tileSize = gp.originalTileSize;
+        int buffer = tileSize * 2;
+
+        for (int row = 0; row < gp.maxWorldRow; row++) {
+            for (int col = 0; col < gp.maxWorldCol; col++) {
+
+                int worldX = col * tileSize;
+                int worldY = row * tileSize;
+
+                int screenX = worldX - camX;
+                int screenY = worldY - camY;
+
+                int tileNum = mapGrid[row][col];
+
+                if (tileNum > 0 &&
+                        tileNum < tile.length &&
+                        tile[tileNum] != null &&
+                        tile[tileNum].image != null) {
+
+                    if (screenX + tileSize >= -buffer &&
+                        screenX <= gp.screenWidth + buffer &&
+                        screenY + tileSize >= -buffer &&
+                        screenY <= gp.screenHeight + buffer) {
+
+                        g2.drawImage(tile[tileNum].image,
+                                screenX, screenY,
+                                tileSize, tileSize,
+                                null);
+                    }
+                }
+            }
+        }
+    }
+
+    // ============================================================
+    // TILE COLLISION CHECK
+    // ============================================================
+    public boolean isTileCollidable(int worldX, int worldY) {
+
+        int tileSize = gp.originalTileSize;
+        int col = worldX / tileSize;
+        int row = worldY / tileSize;
+
+        if (col < 0 || row < 0 || col >= gp.maxWorldCol || row >= gp.maxWorldRow)
+            return true;
+
+        int tileNum = mapGrid[row][col];
+
+        if (tileNum <= 0 || tileNum >= tile.length)
+            return false;
+
+        if (tile[tileNum] == null)
+            return false;
+
+        return tile[tileNum].collision;
+    }
+}

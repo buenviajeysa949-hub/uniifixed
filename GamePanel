@@ -1,0 +1,140 @@
+package main;
+
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+
+import javax.swing.JPanel;
+
+import entity.Player;
+import object.SuperObject;
+import tile.TileManager;
+
+
+
+public class GamePanel extends JPanel implements Runnable {
+
+   
+    public final int originalTileSize = 32;  // 16x16 (original)
+    public final int maxScreenCol = 30;
+    public final int maxScreenRow = 20;
+    
+    public final int screenWidth = 960;
+    public final int screenHeight = 640;
+
+
+    public final int maxWorldCol = 80;
+    public final int maxWorldRow = 50;
+    public final int worldWidth = originalTileSize * maxWorldCol;
+    public final int worldHeight = originalTileSize * maxWorldRow;
+    
+
+    public TileManager tileM = new TileManager(this);
+    public KeyHandler keyH = new KeyHandler();
+    public Player player = new Player(this, keyH);
+    public AssetSetter aSetter = new AssetSetter(this);
+    public SuperObject obj[] = new SuperObject[10];
+    
+
+    
+    private Thread gameThread;
+    public CollisionChecker cChecker = new CollisionChecker(this);
+    private final int FPS = 60;
+   
+
+    public GamePanel() {
+    	setPreferredSize(new Dimension(screenWidth, screenHeight));
+
+    	
+        this.setPreferredSize(new Dimension(screenWidth, screenHeight));
+        this.setBackground(Color.black);
+        this.setDoubleBuffered(true);
+        this.addKeyListener(keyH);
+        this.setFocusable(true);
+    }
+
+   
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        requestFocusInWindow();
+    }
+    
+    public void setupGame() {
+    	
+    	aSetter.setObject();
+    }
+
+    // Start the game loop. Call this after the JFrame is visible.
+    public void startGameThread() {
+        if (gameThread == null) {
+            gameThread = new Thread(this);
+            gameThread.start();
+        }
+    }
+
+    @Override
+    public void run() {
+        final double drawInterval = 1_000_000_000.0 / FPS;
+        double delta = 0;
+        long lastTime = System.nanoTime();
+        long timer = 0;
+        int drawCount = 0;
+
+        while (gameThread != null) {
+            long currentTime = System.nanoTime();
+            long elapsed = currentTime - lastTime;
+            lastTime = currentTime;
+
+            delta += elapsed / drawInterval;
+            timer += elapsed;
+
+            if (delta >= 1) {
+                update();
+                repaint();
+                delta--;
+                drawCount++;
+            }
+
+            if (timer >= 1_000_000_000L) {
+                // Optional: print FPS for debugging
+                // System.out.println("FPS: " + drawCount);
+                drawCount = 0;
+                timer = 0;
+            }
+
+            // Sleep a tiny bit to be nice to CPU (optional)
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    // Game update logic
+    public void update() {
+    	player.update(); // runs collision every frame
+    	repaint();
+
+    }
+
+    public void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        Graphics2D g2 = (Graphics2D) g;
+
+        tileM.draw(g2);
+        
+        for(int i = 0; i < obj.length; i++) {
+        	if(obj[i] != null) {
+        		obj[i].draw(g2,  this);
+        	}
+        }
+        
+       player.draw(g2);
+
+        g2.dispose();
+    }
+
+}

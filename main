@@ -1,0 +1,25 @@
+package main;
+
+import javax.swing.JFrame;
+
+public class Main {
+
+    public static void main(String[] args) {
+
+        JFrame window = new JFrame("UNIVERSIT PIXEL");
+        GamePanel gp = new GamePanel();
+
+        window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        window.setResizable(false);
+
+        window.add(gp);
+        window.pack(); // now correct, because preferred size is set!
+
+        window.setLocationRelativeTo(null);
+        window.setVisible(true);
+         
+        gp.setupGame();
+        gp.startGameThread();
+        gp.requestFocusInWindow();
+    }
+}
